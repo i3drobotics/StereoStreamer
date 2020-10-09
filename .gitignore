@@ -1,0 +1,7 @@
+*.pro.user*
+build/
+Doxyfile.bak
+*.tmp
+.vscode/
+/3rdparty/opencv-4.4.0/opencv
+/3rdparty/opencv-4.4.0/opencv-4.4.0-vc14_vc15.exe
