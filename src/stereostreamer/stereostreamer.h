@@ -88,11 +88,11 @@ namespace StereoStreamer {
     class Client : public QObject {
         Q_OBJECT
     public:
-        explicit Client(std::string ip="127.0.0.1", std::string port="8000",bool enable_reader = true,QObject *parent = nullptr);
+        explicit Client(std::string ip="127.0.0.1", std::string port="8000",bool enable_reader = false,QObject *parent = nullptr);
         void assignThread(QThread* thread);
         void setIP(std::string ip){ip_ = ip;};
         void setPort(std::string port){port_ = port;};
-        int getClientId(){return clientInfo_.id;};
+        ClientInfo getClientInfo(){return clientInfo_;};
         void enableReader(bool enable);
 
         bool isConnected();
@@ -115,7 +115,7 @@ namespace StereoStreamer {
         bool isReader_ = true;
         bool isClientRunning = false;
 
-        StereoStreamer::ClientInfo clientInfo_;
+        StereoStreamer::ClientInfo clientInfo_ = {-1, INVALID_SOCKET};
         std::string collectivemsgs[max_clients_] = {"","","","",""};
         std::thread clientThread_;
 

@@ -74,7 +74,7 @@ Server::Server(std::string ip, std::string port, QObject *parent) : QObject(pare
 }
 
 void Server::assignThread(QThread *thread){
-    qDebug() << "Moving stereo streamer to thread";
+    qDebug() << "Moving stereo streamer server to thread";
     thread_ = thread;
     this->moveToThread(thread_);
     connect(this, SIGNAL(finished()), thread_, SLOT(quit()));
@@ -312,7 +312,7 @@ Client::Client(std::string ip, std::string port,bool enable_reader, QObject *par
 }
 
 void Client::assignThread(QThread *thread){
-    qDebug() << "Moving stereo streamer to thread";
+    qDebug() << "Moving stereo streamer client to thread";
     thread_ = thread;
     this->moveToThread(thread_);
     connect(this, SIGNAL(finished()), thread_, SLOT(quit()));
@@ -630,6 +630,7 @@ bool Client::stopClient(){
         closesocket(clientInfo_.socket);
     }
     closesocket(clientInfo_.socket);
+    clientInfo_ = {-1, INVALID_SOCKET};
     return true;
 }
 

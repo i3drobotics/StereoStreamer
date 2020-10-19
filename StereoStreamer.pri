@@ -11,12 +11,15 @@ VPATH += $$PWD\src\stereostreamer
 SOURCES += \
         stereostreamer.cpp \
         image2string.cpp \
-        stereostreamerviewer.cpp
+        stereostreamerviewer.cpp \
+        stereostreamersettings.cpp
 
 HEADERS += \
         stereostreamer.h \
         image2string.h \
-        stereostreamerviewer.h
+        stereostreamerviewer.h \
+        stereostreamersettings.h
 
-FORMS += stereostreamerviewer.ui \
-    $$PWD/src/widget/stereostreamersettings.ui
+FORMS += \
+        stereostreamerviewer.ui \
+        stereostreamersettings.ui

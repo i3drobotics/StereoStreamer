@@ -18,13 +18,12 @@ int main(int argc, char *argv[])
         cv::Mat test_img(1000, 1000, CV_8UC3);
         while (1) {
             Sleep(100);
-            streamer_client->clientSendStringMessage(test_msg);
-            QCoreApplication::processEvents();
-            /*
-            Sleep(100);
-            cv::randu(test_img, cv::Scalar(0, 0, 0), cv::Scalar(255, 255, 255));
-            streamer_client->clientSendUCharImage(test_img);
-            */
+            if (false){
+                streamer_client->clientSendStringMessage(test_msg);
+            } else {
+                cv::randu(test_img, cv::Scalar(0, 0, 0), cv::Scalar(255, 255, 255));
+                streamer_client->clientSendUCharImage(test_img);
+            }
             QCoreApplication::processEvents();
         }
 
