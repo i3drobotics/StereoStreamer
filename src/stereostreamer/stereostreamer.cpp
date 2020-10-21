@@ -2,66 +2,192 @@
 
 namespace StereoStreamer {
 
-StereoStreamer::ServerMsg translateFromServerMessage(std::string msg){
-    // convert from server message format
-    // comma seperated string
-    // CLIENT_ID,MSG_TYPE,MSG
-    StereoStreamer::ServerMsg serverMsg;
-    std::vector<std::string> msg_split;
-    std::stringstream s_stream(msg); //create string stream from the string
-    while(s_stream.good()) {
-        std::string substr;
-        getline(s_stream, substr, ','); //get first string delimited by comma
-        msg_split.push_back(substr);
-    }
-    if (msg_split.size() == 3){
-        int msg_type_index;
-        try {
-            serverMsg.clientId = std::stoi(msg_split[0]);
-        }
-        catch(std::invalid_argument& e){
-            // if no conversion could be performed
-            serverMsg.clientId = -1;
-            return serverMsg;
-        }
-        catch(std::out_of_range& e){
-            // if the converted value would fall out of the range of the result type
-            // or if the underlying function (std::strtol or std::strtoull) sets errno
-            // to ERANGE.
-            serverMsg.clientId = -1;
-            return serverMsg;
-        }
-        try {
-            msg_type_index = (StereoStreamer::MsgType)std::stoi(msg_split[1]);
-        }
-        catch(std::invalid_argument& e){
-            // if no conversion could be performed
-            serverMsg.msgType = MSG_TYPE_ERROR;
-            return serverMsg;
-        }
-        catch(std::out_of_range& e){
-            // if the converted value would fall out of the range of the result type
-            // or if the underlying function (std::strtol or std::strtoull) sets errno
-            // to ERANGE.
-            serverMsg.msgType = MSG_TYPE_ERROR;
-            return serverMsg;
-        }
-        serverMsg.msg = msg_split[2];
-    }
-    return serverMsg;
+ServerMsg::ServerMsg(){
+    this->senderClientId = INVALID_CLIENT_ID;
+    this->targetClientId = INVALID_CLIENT_ID;
+    this->msgType = MSG_TYPE_NOT_SET;
+    this->msgEndIndex = 1;
+    this->msgIndex = 0;
+    this->msg = "";
 }
 
-std::string translateToServerMessage(StereoStreamer::ServerMsg serverMsg){
+ServerMsg::ServerMsg(int senderClientId, int targetClientId, MsgType msgType, std::string msg){
+    this->senderClientId = senderClientId;
+    this->targetClientId = targetClientId;
+    this->msgType = msgType;
+    this->msgEndIndex = 1;
+    this->msgIndex = 0;
+    this->msg = msg;
+}
+
+ServerMsg::ServerMsg(int senderClientId, int targetClientId, MsgType msgType, std::string msg, int msgEndIndex, int msgIndex){
+    this->senderClientId = senderClientId;
+    this->targetClientId = targetClientId;
+    this->msgType = msgType;
+    this->msgEndIndex = msgEndIndex;
+    this->msgIndex = msgIndex;
+    this->msg = msg;
+}
+
+ServerMsg::ServerMsg(std::string raw_server_msg){
+    // convert from server message format
+    // comma seperated string
+    // SENDER_CLIENT_ID,TARGET_CLIENT_ID,MSG_TYPE,MSG_END_INDEX,MSG_INDEX,MSG
+    if (raw_server_msg[raw_server_msg.size()-1] == '\n'){
+        raw_server_msg = raw_server_msg.substr(0,raw_server_msg.size()-1);
+        std::vector<std::string> msg_split;
+        std::stringstream s_stream(raw_server_msg); //create string stream from the string
+        while(s_stream.good()) {
+            std::string substr;
+            getline(s_stream, substr, ','); //get first string delimited by comma
+            msg_split.push_back(substr);
+        }
+        if (msg_split.size() == 6){
+            try {
+                this->senderClientId = std::stoi(msg_split[0]);
+            }
+            catch(std::invalid_argument& e){
+                // if no conversion could be performed
+                this->senderClientId = INVALID_CLIENT_ID;
+            }
+            catch(std::out_of_range& e){
+                // if the converted value would fall out of the range of the result type
+                // or if the underlying function (std::strtol or std::strtoull) sets errno
+                // to ERANGE.
+                this->senderClientId = INVALID_CLIENT_ID;
+            }
+            try {
+                this->targetClientId = std::stoi(msg_split[1]);
+            }
+            catch(std::invalid_argument& e){
+                // if no conversion could be performed
+                this->targetClientId = INVALID_CLIENT_ID;
+            }
+            catch(std::out_of_range& e){
+                // if the converted value would fall out of the range of the result type
+                // or if the underlying function (std::strtol or std::strtoull) sets errno
+                // to ERANGE.
+                this->targetClientId = INVALID_CLIENT_ID;
+            }
+            try {
+                int msg_type_index = std::stoi(msg_split[2]);
+                this->msgType = (StereoStreamer::MsgType)msg_type_index;
+            }
+            catch(std::invalid_argument& e){
+                // if no conversion could be performed
+                this->msgType = MSG_TYPE_ERROR;
+            }
+            catch(std::out_of_range& e){
+                // if the converted value would fall out of the range of the result type
+                // or if the underlying function (std::strtol or std::strtoull) sets errno
+                // to ERANGE.
+                this->msgType = MSG_TYPE_ERROR;
+            }
+            try {
+                int msg_index = std::stoi(msg_split[3]);
+                this->msgEndIndex = msg_index;
+            }
+            catch(std::invalid_argument& e){
+                // if no conversion could be performed
+                this->msgEndIndex = -1;
+            }
+            catch(std::out_of_range& e){
+                // if the converted value would fall out of the range of the result type
+                // or if the underlying function (std::strtol or std::strtoull) sets errno
+                // to ERANGE.
+                this->msgEndIndex = -1;
+            }
+            try {
+                int msg_index = std::stoi(msg_split[4]);
+                this->msgIndex = msg_index;
+            }
+            catch(std::invalid_argument& e){
+                // if no conversion could be performed
+                this->msgIndex = -1;
+            }
+            catch(std::out_of_range& e){
+                // if the converted value would fall out of the range of the result type
+                // or if the underlying function (std::strtol or std::strtoull) sets errno
+                // to ERANGE.
+                this->msgIndex = -1;
+            }
+            this->msg = msg_split[5];
+            if (pad_packets_){
+                this->msg.erase(std::find(this->msg.begin(), this->msg.end(), padding_char_), this->msg.end());
+            }
+        } else {
+            qDebug() << "Currupt message received. Expects 6 comma delimited string.";
+            invalidMessage();
+        }
+    } else {
+        qDebug() << "Currupt message received. Expects newline at end of string.";
+        invalidMessage();
+    }
+}
+
+void ServerMsg::invalidMessage(){
+    this->senderClientId = INVALID_CLIENT_ID;
+    this->targetClientId = INVALID_CLIENT_ID;
+    this->msgType = MSG_TYPE_ERROR;
+    this->msgEndIndex = -1;
+    this->msgIndex = -1;
+    this->msg = "";
+}
+
+std::string ServerMsg::get_raw_server_message(){
     // convert to server message format
     // comma seperated string
-    // CLIENT_ID,MSG_TYPE,MSG
-    std::string msg;
-    msg += std::to_string(serverMsg.clientId);
-    msg += ",";
-    msg += std::to_string(serverMsg.msgType);
-    msg += ",";
-    msg += serverMsg.msg;
-    return msg;
+    // SENDER_CLIENT_ID,TARGET_CLIENT_ID,MSG_TYPE,MSG_END_INDEX,MSG_INDEX,MSG
+    std::string raw_msg;
+    raw_msg += std::to_string(this->senderClientId);
+    raw_msg += ",";
+    raw_msg += std::to_string(this->targetClientId);
+    raw_msg += ",";
+    raw_msg += std::to_string(this->msgType);
+    raw_msg += ",";
+    raw_msg += std::to_string(this->msgEndIndex);
+    raw_msg += ",";
+    raw_msg += std::to_string(this->msgIndex);
+    raw_msg += ",";
+    raw_msg += this->msg;
+    raw_msg += eom_token_;
+    return raw_msg;
+}
+
+std::vector<ServerMsg> ServerMsg::splitPackets(size_t max_buffer_length, int header_space){
+    std::string srvMsg_msg = this->msg;
+    std::vector<std::string> srvMsg_msg_packets;
+    std::vector<ServerMsg> srvMsg_packets;
+    //split message into packets
+    size_t max_packet_length = max_buffer_length - header_space; //leave room for header in each packet
+    int i = 0;
+    while (true){
+        int start_index = i*max_packet_length;
+        if ((start_index + max_packet_length) < srvMsg_msg.size()){
+            std::string srvMsg_msg_packet = srvMsg_msg.substr(start_index, max_packet_length);
+            srvMsg_msg_packets.push_back(srvMsg_msg_packet);
+            i++;
+        } else {
+            int end_index = srvMsg_msg.size();
+            int length = end_index - start_index;
+            std::string srvMsg_msg_packet = srvMsg_msg.substr(start_index, length);
+            srvMsg_msg_packets.push_back(srvMsg_msg_packet);
+            break;
+        }
+    }
+    int end_index = srvMsg_msg_packets.size();
+    for (std::vector<std::string>::iterator it = srvMsg_msg_packets.begin() ; it != srvMsg_msg_packets.end(); ++it){
+        int index = it - srvMsg_msg_packets.begin();
+        std::string srv_msg = *it;
+        ServerMsg newSrvMsg(this->senderClientId,this->targetClientId,this->msgType,srv_msg,end_index,index);
+        std::string raw_msg = newSrvMsg.get_raw_server_message();
+        if (raw_msg.size() < max_buffer_length){
+            srvMsg_packets.push_back(newSrvMsg);
+        } else {
+            qDebug() << "Invalid packet size:" << raw_msg.size() << "THIS SHOULD NEVER HAPPEN!";
+        }
+    }
+    return srvMsg_packets;
 }
 
 Server::Server(std::string ip, std::string port, QObject *parent) : QObject(parent), ip_(ip), port_(port)
@@ -133,7 +259,7 @@ void Server::startServer(){
     for (int i = 0; i < max_clients_; i++)
     {
         // initalise clients with msg type of string
-        clientInfos_[i] = { -1, INVALID_SOCKET, std::chrono::steady_clock::now()};
+        clientInfos_[i] = ClientInfo();
     }
 
     connect(this, SIGNAL(serverCycleComplete()), this, SLOT(serverCycleThreaded()));
@@ -162,30 +288,44 @@ int Server::process_client(ClientInfo &new_client, std::vector<ClientInfo> &clie
         if (l > 0){
             int iResult = recv(new_client.socket, tempmsg, max_buffer_length_, 0);
 
-            //std::string endlch = "\n";
-
             if (iResult != SOCKET_ERROR)
             {
                 client_array[new_client.id].lastValidMsgTime = std::chrono::steady_clock::now();
-                //if (strcmp("", tempmsg))
-                    //msg = "Client #" + std::to_string(new_client.id) + ": " + tempmsg;
-                    //msg = tempmsg + endlch;
-                    //msg = tempmsg;
                 msg = tempmsg;
 
                 //qDebug() << msg.c_str();
-                //std::cout << msg.c_str() << std::endl;
 
-                //Broadcast that message to the other clients
-                for (int i = 0; i < max_clients_; i++)
-                {
-                    if (client_array[i].socket != INVALID_SOCKET){
-                        if (new_client.id != i){
-                            send(client_array[i].socket, msg.c_str(), (int)strlen(msg.c_str()), 0);
-                            //TODO check result of send to make sure it was successful
-                            //iResult = send(client_array[i].socket, msg.c_str(), (int)strlen(msg.c_str()), 0);
+                //get target client from message
+                ServerMsg srvMsg(msg);
+                if (srvMsg.targetClientId != INVALID_CLIENT_ID){
+                    if (srvMsg.targetClientId == SEND_TO_ALL_CLIENTS){
+                        //Broadcast that message to all the other clients
+                        for (int i = 0; i < max_clients_; i++)
+                        {
+                            if (client_array[i].socket != INVALID_SOCKET){
+                                if (new_client.id != i){
+                                    iResult = send(client_array[i].socket, msg.c_str(), (int)strlen(msg.c_str()), 0);
+
+                                    //if (iResult != SOCKET_ERROR)
+                                    //{
+                                    //    qDebug() << "Closing client as unable to send data to socket";
+                                    //    clientDisconnected(client_array[i],client_array);
+                                    //}
+
+                                }
+                            }
+                        }
+                    } else if (srvMsg.targetClientId == SERVER_CLIENT_ID){
+
+                    } else {
+                        //Broadcast message to specific client
+                        if (client_array[srvMsg.targetClientId].socket != INVALID_SOCKET){
+                            send(client_array[srvMsg.targetClientId].socket, msg.c_str(), (int)strlen(msg.c_str()), 0);
                         }
                     }
+
+                } else {
+                    qDebug () << "Invalid target client id";
                 }
             }
             else
@@ -194,6 +334,7 @@ int Server::process_client(ClientInfo &new_client, std::vector<ClientInfo> &clie
                 break;
             }
         } else {
+            /*
             // get time idle and disconnect after x time
             std::chrono::steady_clock::time_point time = std::chrono::steady_clock::now();
             int dur_us = std::chrono::duration_cast<std::chrono::microseconds>(time - client_array[new_client.id].lastValidMsgTime).count();
@@ -203,6 +344,7 @@ int Server::process_client(ClientInfo &new_client, std::vector<ClientInfo> &clie
                 clientDisconnected(new_client,client_array);
                 break;
             }
+            */
         }
     }
 
@@ -223,6 +365,7 @@ void Server::clientDisconnected(ClientInfo &new_client, std::vector<ClientInfo> 
     client_array[new_client.id].socket = INVALID_SOCKET;
 
     //Broadcast the disconnection message to the other clients
+    /*
     for (int i = 0; i < max_clients_; i++)
     {
         if (client_array[i].socket != INVALID_SOCKET){
@@ -231,6 +374,7 @@ void Server::clientDisconnected(ClientInfo &new_client, std::vector<ClientInfo> 
             //iResult = send(client_array[i].socket, msg.c_str(), (int)strlen(msg.c_str()), 0);
         }
     }
+    */
 }
 
 void Server::serverCycle(){
@@ -243,10 +387,10 @@ void Server::serverCycle(){
         num_clients_ = -1;
 
         //Create a temporary id for the next client
-        int temp_id_ = -1;
+        int temp_id_ = INVALID_CLIENT_ID;
         for (int i = 0; i < max_clients_; i++)
         {
-            if (clientInfos_[i].socket == INVALID_SOCKET && temp_id_ == -1)
+            if (clientInfos_[i].socket == INVALID_SOCKET && temp_id_ == INVALID_CLIENT_ID)
             {
                 clientInfos_[i].socket = incoming;
                 clientInfos_[i].id = i;
@@ -259,27 +403,98 @@ void Server::serverCycle(){
             //std::cout << client[i].socket << std::endl;
         }
 
-        if (temp_id_ != -1)
+        if (temp_id_ != INVALID_CLIENT_ID)
         {
             //Send the id to that client
             qDebug() << "Client #" << clientInfos_[temp_id_].id << "Accepted";
             //std::cout << "Client #" << serverClient_[temp_id_].id << " Accepted" << std::endl;
             msg = std::to_string(clientInfos_[temp_id_].id);
-            send(clientInfos_[temp_id_].socket, msg.c_str(), (int)strlen(msg.c_str()), 0);
+            sendServerMessage(ServerMsg(SERVER_CLIENT_ID,temp_id_,MSG_TYPE_CLIENT_ID,msg));
+
+            //send(clientInfos_[temp_id_].socket, msg.c_str(), (int)strlen(msg.c_str()), 0);
 
             //Create a thread process for that client
             clientThreads_[temp_id_] = std::thread(&Server::process_client, this, std::ref(clientInfos_[temp_id_]), std::ref(clientInfos_), std::ref(clientThreads_[temp_id_]));
         }
         else
         {
-            msg = "Server is full";
-            send(incoming, msg.c_str(), (int)strlen(msg.c_str()), 0);
+            msg = SERVER_FULL;
+            sendServerMessage(ServerMsg(SERVER_CLIENT_ID,temp_id_,MSG_TYPE_SERVER_MSG,msg));
+            //send(incoming, msg.c_str(), (int)strlen(msg.c_str()), 0);
             qDebug() << msg.c_str();
             //std::cout << msg << std::endl;
         }
     }
 
     emit serverCycleComplete();
+}
+
+bool Server::sendServerMessage(ServerMsg message){
+    if (message.targetClientId >= 0){
+        std::string msg = message.get_raw_server_message();
+        // add end of message token to end of string
+        //msg += eom_token_;
+        size_t total_size = msg.size();
+        if (total_size < max_buffer_length_){
+            return sendMessagePacket(message.targetClientId,msg);
+        } else {
+            bool success = true;
+            std::vector<ServerMsg> srvMsg_packets = message.splitPackets(max_buffer_length_,header_buffer_);
+            for (std::vector<ServerMsg>::iterator it = srvMsg_packets.begin() ; it != srvMsg_packets.end(); ++it){
+                std::string raw_msg = it->get_raw_server_message();
+                //raw_msg += eom_token_; // add end of message token to end of string
+                qDebug() << "Packet size:" << raw_msg.size();
+                success &= sendMessagePacket(message.targetClientId,raw_msg);
+                if (!success) break;
+                Sleep(message_sleep_time_); // sleep between sends
+            }
+            return success;
+        }
+    } else {
+        qDebug() << "target client id is invalid";
+        return false;
+    }
+}
+
+bool Server::sendMessagePacket(int targetClientId, std::string message){
+    if (message.size() > max_buffer_length_){
+        qDebug() << "Unable to send message as it will overflow the stream buffer";
+        return false;
+    } else {
+        if (clientInfos_[targetClientId].socket != INVALID_SOCKET){
+            std::string send_message = message;
+            if (pad_packets_){
+                // always send same size packet
+                if (message.size() < max_buffer_length_){
+                    std::string padded_message = send_message.append(std::string( (max_buffer_length_ - message.size() ), padding_char_));
+                    send_message = padded_message;
+                }
+            }
+            //send_message += eom_token_; // add end of message token to end of string
+            int iResult = send(clientInfos_[targetClientId].socket, send_message.c_str(), (int)strlen(send_message.c_str()), 0);
+            if (iResult <= 0)
+            {
+                int error = WSAGetLastError();
+                qDebug() << "send() failed: " << error;
+                return false;
+            } else {
+                return true;
+            }
+        } else {
+            qDebug() << "Invalid socket";
+            return false;
+        }
+    }
+}
+
+bool Server::testConnected(int targetClientId){
+    std::string testStr = ".";
+    int iResult = send(clientInfos_[targetClientId].socket, testStr.c_str(), (int)strlen(testStr.c_str()), 0);
+    if (iResult == SOCKET_ERROR)
+    {
+        return false;
+    }
+    return true;
 }
 
 void Server::stopServer(){
@@ -292,7 +507,14 @@ void Server::stopServer(){
     //Close client socket
     for (int i = 0; i < max_clients_; i++)
     {
-        closesocket(clientInfos_[i].socket);
+        if (testConnected(clientInfos_[i].id)){
+            closesocket(clientInfos_[i].socket);
+            //clientDisconnected(clientInfos_[i],clientInfos_);
+            if (clientThreads_[i].joinable()){
+                clientThreads_[i].detach();
+            }
+        }
+
     }
 
     //Clean up Winsock
@@ -326,7 +548,7 @@ bool Client::startClient(){
     WSAData wsa_data;
     struct addrinfo *result = NULL, *ptr = NULL, hints;
     std::string sent_message = "";
-    ClientInfo client = { -1, INVALID_SOCKET, std::chrono::steady_clock::now()};
+    ClientInfo client;
     int iResult = 0;
     std::string message;
 
@@ -392,20 +614,28 @@ bool Client::startClient(){
 
     //Obtain id from server for this client;
     char received_message[max_buffer_length_];
+    memset(received_message, 0, max_buffer_length_);
     recv(client.socket, received_message, max_buffer_length_, 0);
     message = received_message;
+    ServerMsg srvMsg(message);
 
-    if (message != "Server is full")
+    if (srvMsg.msg != SERVER_FULL)
     {
-        qDebug() << "Connected with ID:" << received_message;
-        client.id = atoi(received_message);
-        clientInfo_ = client;
-        if (isReader_){
-            connect(this, SIGNAL(clientMessage(StereoStreamer::ServerMsg)), this, SLOT(messageReceived(StereoStreamer::ServerMsg)));
-            clientThread_ = std::thread(&Client::process_client, this, std::ref(clientInfo_));
+        if (srvMsg.msgType == MSG_TYPE_CLIENT_ID){
+            qDebug() << "Connected with ID:" << srvMsg.msg.c_str();
+            client.id = atoi(srvMsg.msg.c_str());
+            clientInfo_ = client;
+            if (isReader_){
+                connect(this, SIGNAL(clientMessage(StereoStreamer::ServerMsg)), this, SLOT(messageReceived(StereoStreamer::ServerMsg)));
+                clientThread_ = std::thread(&Client::process_client, this, std::ref(clientInfo_));
+            }
+            isClientRunning = true;
+            return true;
+        } else {
+            qDebug() << "Invalid server response. Expected client id message";
+            return false;
         }
-        isClientRunning = true;
-        return true;
+
     } else {
         qDebug() << "Server is full";
         return false;
@@ -432,9 +662,12 @@ void Client::enableReader(bool enable){
 void Client::messageReceived(StereoStreamer::ServerMsg server_msg){
     //std::cout << "Message from # " << msg.clientId <<  " : " << msg.msg << std::endl;
     std::string msg = server_msg.msg;
-    int sender_id = server_msg.clientId;
+    int sender_id = server_msg.senderClientId;
     std::cout << "Message received of size: " << msg.size() << std::endl;
     switch(server_msg.msgType){
+    case MSG_TYPE_ERROR:
+        std::cerr << "Error in message" << std::endl;
+        break;
     case MSG_TYPE_STRING:
         std::cout << "Message from # " << sender_id <<  " : " << msg << std::endl;
         break;
@@ -463,41 +696,41 @@ void Client::messageReceived(StereoStreamer::ServerMsg server_msg){
     }
 }
 
-bool Client::clientSendUCharImageThreaded(cv::Mat image){
+bool Client::clientSendUCharImageThreaded(cv::Mat image, int targetClientId){
     if (qfuture_clientSendThreaded != nullptr){
         if (qfuture_clientSendThreaded->isFinished()){
             cv::Mat send_image = image.clone();
-            qfuture_clientSendThreaded = new QFuture<bool>(QtConcurrent::run(this, &Client::clientSendUCharImage, send_image));
+            qfuture_clientSendThreaded = new QFuture<bool>(QtConcurrent::run(this, &Client::clientSendUCharImage, send_image, targetClientId));
             return true;
         } else {
-            qDebug() << "client thread is busy";
+            //qDebug() << "client thread is busy";
             return false;
         }
     } else {
         cv::Mat send_image = image.clone();
-        qfuture_clientSendThreaded = new QFuture<bool>(QtConcurrent::run(this, &Client::clientSendUCharImage, send_image));
+        qfuture_clientSendThreaded = new QFuture<bool>(QtConcurrent::run(this, &Client::clientSendUCharImage, send_image, targetClientId));
         return true;
     }
 }
 
-bool Client::clientSendFloatImageThreaded(cv::Mat image){
+bool Client::clientSendFloatImageThreaded(cv::Mat image, int targetClientId){
     if (qfuture_clientSendThreaded != nullptr){
         if (qfuture_clientSendThreaded->isFinished()){
             cv::Mat send_image = image.clone();
-            qfuture_clientSendThreaded = new QFuture<bool>(QtConcurrent::run(this, &Client::clientSendFloatImage, send_image));
+            qfuture_clientSendThreaded = new QFuture<bool>(QtConcurrent::run(this, &Client::clientSendFloatImage, send_image, targetClientId));
             return true;
         } else {
-            qDebug() << "client thread is busy";
+            //qDebug() << "client thread is busy";
             return false;
         }
     } else {
         cv::Mat send_image = image.clone();
-        qfuture_clientSendThreaded = new QFuture<bool>(QtConcurrent::run(this, &Client::clientSendFloatImage, send_image));
+        qfuture_clientSendThreaded = new QFuture<bool>(QtConcurrent::run(this, &Client::clientSendFloatImage, send_image, targetClientId));
         return true;
     }
 }
 
-bool Client::isConnected(){
+bool Client::testConnected(){
     std::string testStr = ".";
     int iResult = send(clientInfo_.socket, testStr.c_str(), (int)strlen(testStr.c_str()), 0);
     if (iResult == SOCKET_ERROR)
@@ -507,12 +740,21 @@ bool Client::isConnected(){
     return true;
 }
 
-bool Client::clientSendMessagePacket(std::string message){
+bool Client::sendMessagePacket(std::string message){
     if (message.size() > max_buffer_length_){
         qDebug() << "Unable to send message as it will overflow the stream buffer";
         return false;
     } else {
-        int iResult = send(clientInfo_.socket, message.c_str(), (int)strlen(message.c_str()), 0);
+        std::string send_message = message;
+        if (pad_packets_){
+            // always send same size packet
+            if (message.size() < max_buffer_length_){
+                std::string padded_message = send_message.append(std::string( (max_buffer_length_ - message.size()+1 ), padding_char_));
+                send_message = padded_message;
+            }
+        }
+        //send_message += eom_token_;
+        int iResult = send(clientInfo_.socket, send_message.c_str(), (int)strlen(send_message.c_str()), 0);
         if (iResult <= 0)
         {
             int error = WSAGetLastError();
@@ -524,49 +766,46 @@ bool Client::clientSendMessagePacket(std::string message){
     }
 }
 
-bool Client::clientSendMessage(ServerMsg message){
-    std::string msg = StereoStreamer::translateToServerMessage(message);
+bool Client::sendServerMessage(ServerMsg message){
+    std::string msg = message.get_raw_server_message();
     // add end of message token to end of string
-    msg+= eom_token_;
+    //msg += eom_token_;
     size_t total_size = msg.size();
     if (total_size < max_buffer_length_){
-        return clientSendMessagePacket(msg);
+        return sendMessagePacket(msg);
     } else {
         bool success = true;
-        //split message into packets
-        float num_of_packets_f = (float)total_size / (float)max_buffer_length_;
-        size_t num_of_packets_i = ceil(num_of_packets_f);
-        for (size_t i = 0; i < num_of_packets_i; i++){
-            size_t start_index = i*max_buffer_length_;
-            size_t packet_length = max_buffer_length_;
-            if ((start_index + max_buffer_length_) > msg.size()){
-                packet_length = msg.size() - start_index;
-            }
-            std::string msg_packet = msg.substr(start_index, packet_length);
-            success &= clientSendMessagePacket(msg_packet);
+        std::vector<ServerMsg> srvMsg_packets = message.splitPackets(max_buffer_length_,header_buffer_);
+        for (std::vector<ServerMsg>::iterator it = srvMsg_packets.begin() ; it != srvMsg_packets.end(); ++it){
+            std::string raw_msg = it->get_raw_server_message();
+            //raw_msg += eom_token_; // add end of message token to end of string
+            qDebug() << "Packet size:" << raw_msg.size()+1;
+            success &= sendMessagePacket(raw_msg);
+            if (!success) break;
+            Sleep(message_sleep_time_); // sleep between sends
         }
         return success;
     }
 }
 
-bool Client::clientSendStringMessage(std::string message){
+bool Client::clientSendStringMessage(std::string message, int targetClientId){
     //TODO check message does not contain OEM as this will cause issues
-    ServerMsg srvMsg {clientInfo_.id, MSG_TYPE_STRING, message};
-    return clientSendMessage(srvMsg);
+    ServerMsg srvMsg(clientInfo_.id, targetClientId, MSG_TYPE_STRING, message);
+    return sendServerMessage(srvMsg);
 }
 
-bool Client::clientSendUCharImage(cv::Mat image){
+bool Client::clientSendUCharImage(cv::Mat image, int targetClientId){
     std::string message = Image2String::ucharMat2str(image,100);
     qDebug() << "Sending image message of size: " << message.size();
-    ServerMsg srvMsg {clientInfo_.id, MSG_TYPE_IMAGE, message};
-    return clientSendMessage(srvMsg);
+    ServerMsg srvMsg(clientInfo_.id, targetClientId, MSG_TYPE_IMAGE, message);
+    return sendServerMessage(srvMsg);
 }
 
-bool Client::clientSendFloatImage(cv::Mat image){
+bool Client::clientSendFloatImage(cv::Mat image, int targetClientId){
     std::string message = Image2String::floatMat2str(image);
     qDebug() << "Sending image message of size: " << message.size();
-    ServerMsg srvMsg {clientInfo_.id, MSG_TYPE_IMAGE, message};
-    return clientSendMessage(srvMsg);
+    ServerMsg srvMsg(clientInfo_.id, targetClientId, MSG_TYPE_IMAGE, message);
+    return sendServerMessage(srvMsg);
 }
 
 int Client::process_client(ClientInfo &new_client){
@@ -588,8 +827,8 @@ int Client::process_client(ClientInfo &new_client){
                     collectivemsgs[new_client.id].erase(collectivemsgs[new_client.id].length()-1);
                     // check string is not empty
                     if (!collectivemsgs[new_client.id].empty()){
-                        StereoStreamer::ServerMsg serverMsg = StereoStreamer::translateFromServerMessage(collectivemsgs[new_client.id]);
-                        if (serverMsg.msgType == MSG_TYPE_ERROR || serverMsg.clientId == -1){
+                        StereoStreamer::ServerMsg serverMsg(collectivemsgs[new_client.id]);
+                        if (serverMsg.msgType == MSG_TYPE_ERROR || serverMsg.senderClientId == INVALID_CLIENT_ID){
                             std::cerr << "Invalid server message" << std::endl;
                         } else {
                             //std::cout << "Message from # " << serverMsg.clientId <<  " : " << serverMsg.msg << std::endl;
@@ -630,7 +869,7 @@ bool Client::stopClient(){
         closesocket(clientInfo_.socket);
     }
     closesocket(clientInfo_.socket);
-    clientInfo_ = {-1, INVALID_SOCKET};
+    clientInfo_ = ClientInfo();
     return true;
 }
 
