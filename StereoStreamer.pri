@@ -1,5 +1,7 @@
 QT += core gui widgets
 
+DEFINES += WITH_BOOST
+
 DEPENDPATH += "$$PWD\src"
 INCLUDEPATH += "$$PWD\src"
 INCLUDEPATH += "$$PWD\src\widget"

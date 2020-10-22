@@ -5,3 +5,4 @@ Doxyfile.bak
 .vscode/
 /3rdparty/opencv-4.4.0/opencv
 /3rdparty/opencv-4.4.0/opencv-4.4.0-vc14_vc15.exe
+/3rdparty/boost-1.66.0/boost_1_66_0
