@@ -24,14 +24,14 @@
 namespace StereoStreamer {
 
     static const int max_clients_ = 5;
-    static const size_t max_buffer_length_ = 65535;
-    //static const size_t max_buffer_length_ = 8192;
+    //static const size_t max_buffer_length_ = 65535;
+    static const size_t max_buffer_length_ = 1024;
     static const size_t header_buffer_ = 64;
     static const int client_timeout_ = 5000; // will close client if no message received after n ms
     static const char eom_token_ = '\n';
     static const char padding_char_ = '\r';
     static const char option_value_ = 1;
-    static const int message_sleep_time_ = 30;
+    static const int message_sleep_time_ = 0;
     static const int INVALID_CLIENT_ID = -1; //client id used to signify a client id error
     static const int SERVER_CLIENT_ID = -2; //client id held by the server
     static const int SEND_TO_ALL_CLIENTS = -3; //client id used to signify message should be sent to all clients
