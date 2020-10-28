@@ -795,14 +795,14 @@ bool Client::clientSendStringMessage(std::string message, int targetClientId){
 }
 
 bool Client::clientSendUCharImage(cv::Mat image, int targetClientId){
-    std::string message = Image2String::ucharMat2str(image,100);
+    std::string message = Image2String::mat2str(image,false,100);
     qDebug() << "Sending image message of size: " << message.size();
     ServerMsg srvMsg(clientInfo_.id, targetClientId, MSG_TYPE_IMAGE, message);
     return sendServerMessage(srvMsg);
 }
 
 bool Client::clientSendFloatImage(cv::Mat image, int targetClientId){
-    std::string message = Image2String::floatMat2str(image);
+    std::string message = Image2String::mat2str(image,true);
     qDebug() << "Sending image message of size: " << message.size();
     ServerMsg srvMsg(clientInfo_.id, targetClientId, MSG_TYPE_IMAGE, message);
     return sendServerMessage(srvMsg);

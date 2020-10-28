@@ -503,7 +503,15 @@ bool Server::sendStringMessage(std::string message, int targetClientId){
 }
 
 bool Server::sendImage(cv::Mat image, int targetClientId){
-    std::string message = Image2String::ucharMat2str(image,100);
+    std::string message;
+    if (image.type() == CV_32FC3){
+        message = Image2String::mat2str(image, true);
+    } else if (image.type() == CV_8UC3 || image.type() == CV_8UC1){
+        message = Image2String::mat2str(image,false,100);
+    } else {
+        qDebug() << "Invalid image type";
+        return false;
+    }
     qDebug() << "Sending image message of size: " << message.size();
     ServerMsg srvMsg(SERVER_CLIENT_ID, targetClientId, MSG_TYPE_IMAGE, message);
     return sendServerMessage(srvMsg);
@@ -735,7 +743,7 @@ bool Client::sendStringMessage(std::string message, int targetClientId){
 }
 
 bool Client::sendImage(cv::Mat image, int targetClientId){
-    std::string message = Image2String::ucharMat2str(image,100);
+    std::string message = Image2String::mat2str(image,false,100);
     qDebug() << "Sending image message of size: " << message.size();
     ServerMsg srvMsg(SERVER_CLIENT_ID, targetClientId, MSG_TYPE_IMAGE, message);
     return sendServerMessage(srvMsg);

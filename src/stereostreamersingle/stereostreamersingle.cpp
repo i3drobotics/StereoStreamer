@@ -378,12 +378,12 @@ bool Client::clientSendStringMessage(std::string message){
 }
 
 bool Client::clientSendUCharImage(cv::Mat image){
-    std::string message = Image2String::ucharMat2str(image,100);
+    std::string message = Image2String::mat2str(image,false,100);
     return sendMessage(client_socket_,message);
 }
 
 bool Client::clientSendFloatImage(cv::Mat image){
-    std::string message = Image2String::floatMat2str(image);
+    std::string message = Image2String::mat2str(image,true,100);
     return sendMessage(client_socket_,message);
 }
 

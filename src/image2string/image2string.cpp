@@ -123,28 +123,21 @@ std::string Image2String::base64_decode(std::string const& encoded_string)
 	return ret;
 }
 
-std::string Image2String::ucharMat2str(const cv::Mat& m, int quality=100)
+std::string Image2String::mat2str(const cv::Mat& m, bool uncompressed, int quality)
 {
-	int params[3] = {0};
-    params[0] = cv::IMWRITE_JPEG_QUALITY;
-    params[1] = quality;
-    //params[0] = cv::IMWRITE_PNG_COMPRESSION;
-    //params[1] = quality;
-
+    uchar* result;
     std::vector<uchar> buf;
-    cv::imencode(".jpg", m, buf, std::vector<int>(params, params+2));
-    //bool code = cv::imencode(".png", m, buf, std::vector<int>(params, params+2));
-	uchar* result = reinterpret_cast<uchar*> (&buf[0]);
+    if (uncompressed){
+        cv::imencode(".tiff", m, buf);
+        result = reinterpret_cast<uchar*> (&buf[0]);
+    } else {
+        int params[3] = {0};
+        params[0] = cv::IMWRITE_JPEG_QUALITY;
+        params[1] = quality;
 
-	return base64_encode(result, buf.size());
-}
-
-std::string Image2String::floatMat2str(const cv::Mat& m)
-{
-    std::vector<uchar> buf;
-    cv::imencode(".tiff", m, buf);
-    uchar* result = reinterpret_cast<uchar*> (&buf[0]);
-
+        cv::imencode(".jpg", m, buf, std::vector<int>(params, params+2));
+        result = reinterpret_cast<uchar*> (&buf[0]);
+    }
     return base64_encode(result, buf.size());
 }
 
